@@ -90,9 +90,44 @@ def respond(sock):
     log.info("Request was {}\n***\n".format(request))
 
     parts = request.split()
+    options = get_options()
+    drt = options.DOCROOT
     if len(parts) > 1 and parts[0] == "GET":
-        transmit(STATUS_OK, sock)
-        transmit(CAT, sock)
+        log.info("Part is: {} and {} and {}".format(parts[0], parts[1], parts[2]))
+        if parts[1] == "/": 
+            transmit(STATUS_OK, sock)
+            transmit(CAT, sock)
+
+        else:
+            if ".." in parts[1] or '~' in parts[1]:
+                transmit(STATUS_FORBIDDEN, sock)
+                transmit("403: illegal request", sock)
+            else:
+                try:
+                    f=open(drt + parts[1])
+                    transmit(STATUS_OK, sock)
+                    transmit(f.read(), sock)
+                    f.close()
+                except IOError:
+                    transmit(STATUS_NOT_FOUND, sock)
+                    transmit("404: not found", sock)
+                    log.info("looking for {} in {}. an item is {}".format(parts[1][1:], drt, drt[1]))
+       # file exists -> transmit 200 OK header + file
+        """
+        elif parts[1][1:] in drt:
+            transmit(STATUS_OK, sock)
+            transmit(parts[1], sock)
+        # file doesnt exist -> 404 not found + message
+        else:
+            if ".." in parts[1] or '~' in parts[1]:
+                transmit(STATUS_FORBIDDEN, sock)
+                transmit("403: illegal request", sock)
+            else:
+                transmit(STATUS_NOT_FOUND, sock)
+                transmit("404: not found", sock)
+                log.info("looking for {} in {}. an item is {}".format(parts[1][1:], drt, drt[1]))
+        # illegal request (.. or ~) -> 403 forbidden +message
+        """
     else:
         log.info("Unhandled request: {}".format(request))
         transmit(STATUS_NOT_IMPLEMENTED, sock)
